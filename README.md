@@ -1,0 +1,2 @@
+# sudox
+sudo X
