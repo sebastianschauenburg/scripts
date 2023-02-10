@@ -1,0 +1,32 @@
+#!/bin/sh
+
+SUDO_DISPLAY=$(echo "${DISPLAY}" | cut -d: -f2)
+SUDO_ARGUMENTS=$*
+SUDO_USERNAME="root"
+PATH="/sbin:/usr/sbin:/usr/local/sbin:/usr/local/bin:/usr/bin:/bin"
+
+error_and_exit(){
+	echo "error: ${1}"
+	exit 1
+}
+
+# check if xauth is available
+command -v xauth >/dev/null 2>&1 || error_and_exit "xauth not found"
+
+# generate .Xauthority if it does not exist
+[ -e "${HOME}/.Xauthority" ] || xauth generate ":${SUDO_DISPLAY}" .
+
+while [ "${1}" ]
+do
+        if echo "${1}" | grep -qE -- '^-[a-zA-Z]*u$'
+        then   
+                shift
+                SUDO_USERNAME=${1}
+        fi
+        shift
+done
+
+SUDO_HOMEDIR=$( sudo -i -u "${SUDO_USERNAME}" pwd )
+
+xauth extract - ":${SUDO_DISPLAY}" | sudo -u "${SUDO_USERNAME}" XAUTHORITY="${SUDO_HOMEDIR}/.Xauthority" xauth merge -
+sudo XAUTHORITY="${SUDO_HOMEDIR}/.Xauthority" ${SUDO_ARGUMENTS}
